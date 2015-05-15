@@ -25,7 +25,6 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.sameInstance;
 
-@SuppressWarnings("UnusedDeclaration")
 public class DecoriceTest {
 
     @ScopeAnnotation @Retention(RUNTIME)
@@ -52,7 +51,7 @@ public class DecoriceTest {
         }
     }
 
-    private static class D2<T> implements Foo {
+    private static class D2 implements Foo {
         private final Foo decorated;
 
         @Inject
