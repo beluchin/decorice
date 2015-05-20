@@ -19,9 +19,9 @@ You have a chain of decorators (D2 -> D1 -> D0) to bind with `Guice`.
 
     class D0 implements Foo {/* ... */}
 
-`Guice` does not offer much syntactic sugar to help with binding such chain. (inspired by [an answer](http://stackoverflow.com/a/6197660/614800) posted on stackoverflow) `decorice` complements `Guice` by helping you bind the chain with less boilerplate.
+`Guice` does not offer much syntactic sugar to help with binding such chain. (inspired by [an answer](http://stackoverflow.com/a/6197660/614800) posted on stackoverflow and [a blog] (http://www.mikevalenty.com/configuring-decorators-with-google-guice/) post) `decorice` complements `Guice` by helping you bind the chain with less boilerplate.
 
-First, on each decorator, annotate the constructor parameter associated with the decorated instance with the `@DecorateBy` annotation:
+First, on each decorator, annotate the constructor parameter associated with the decorated instance with the `@DecorateBy` annotation passing the decorator class name as an attribute to the annotation (the decorator is oblivious to the concrete class it is decorating):
 
     class D2 implements Foo {
         D2(@DecoratedBy(D2.class) Foo decorated /* ... */) {/* ... */}
