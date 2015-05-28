@@ -2,19 +2,17 @@ package decorice;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Binder;
+import com.google.inject.Key;
 import com.google.inject.Scope;
 
 import java.lang.annotation.Annotation;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.IntStream;
-import java.util.stream.Stream;
-
-import static java.util.Arrays.stream;
-import static java.util.stream.Collectors.toList;
-import static java.util.stream.Stream.concat;
 
 @SuppressWarnings("unchecked")
 public class DecoratorModule implements com.google.inject.Module {
@@ -25,11 +23,14 @@ public class DecoratorModule implements com.google.inject.Module {
         void in(Scope scope);
     }
 
-    public static interface LinkedBindingBuilder<T>
-            extends ScopedBindingBuilder {
-        ScopedBindingBuilder to(
+    public static interface LinkedBindingBuilder<T> {
+        DecorationBindingBuilder<T> to(Key<? extends T> key);
+        DecorationBindingBuilder<T> to(Class<? extends T> clazz);
+    }
+
+    public static interface DecorationBindingBuilder<T> {
+        ScopedBindingBuilder decoratedBy(
                 Class<? extends T> first,
-                Class<? extends T> second,
                 Class<? extends T>... rest);
     }
 
@@ -38,7 +39,11 @@ public class DecoratorModule implements com.google.inject.Module {
         LinkedBindingBuilder<T> annotatedWith(Class<? extends Annotation> annotationType);
     }
 
-    private class BindingBuilder<T> implements AnnotatedBindingBuilder<T> {
+    private class BindingBuilder<T> implements
+            AnnotatedBindingBuilder<T>,
+            DecorationBindingBuilder<T>,
+            ScopedBindingBuilder
+    {
         @Override
         public LinkedBindingBuilder<T> annotatedWith(
                 final Class<? extends Annotation> annotationType) {
@@ -47,12 +52,24 @@ public class DecoratorModule implements com.google.inject.Module {
         }
 
         @Override
-        public ScopedBindingBuilder to(
+        public ScopedBindingBuilder decoratedBy(
                 final Class<? extends T> first,
-                final Class<? extends T> second,
                 final Class<? extends T>... rest) {
-            classes = concat(Stream.of(first, second), stream(rest))
-                    .collect(toList());
+            decorators = new ArrayList<>();
+            decorators.add(first);
+            decorators.addAll(Arrays.asList(rest));
+            return this;
+        }
+
+        @Override
+        public DecorationBindingBuilder<T> to(final Key<? extends T> key) {
+            link = b -> b.to(key);
+            return this;
+        }
+
+        @Override
+        public DecorationBindingBuilder<T> to(final Class<? extends T> clazz) {
+            link = b -> b.to(clazz);
             return this;
         }
 
@@ -70,8 +87,10 @@ public class DecoratorModule implements com.google.inject.Module {
         public void in(final Scope scope) {
             DecoratorModule.this.scope = Optional.of(b -> b.in(scope));
         }
+
     }
 
+    @SuppressWarnings("ClassExplicitlyAnnotation")
     private static class Decorated implements DecoratedBy {
         private final Class<?> value;
 
@@ -110,7 +129,10 @@ public class DecoratorModule implements com.google.inject.Module {
     }
 
     private Class targetClass;
-    private List<Class> classes;
+    private Function<
+            com.google.inject.binder.LinkedBindingBuilder,
+            com.google.inject.binder.ScopedBindingBuilder> link;
+    private List<Class> decorators;
     private Optional<Function<
             com.google.inject.binder.AnnotatedBindingBuilder,
             com.google.inject.binder.LinkedBindingBuilder>> annotation =
@@ -135,15 +157,23 @@ public class DecoratorModule implements com.google.inject.Module {
                 final DecoratorModule m = decoratorModule.get();
 
                 m.applyScope(m.applyAnnotation(bind(m.targetClass))
-                        .to(m.classes.get(0)));
+                        .to(m.decorators.get(0)));
 
-                IntStream.range(0, m.classes.size() - 1).forEach(i ->
+                IntStream.range(1, m.decorators.size()).forEach(i ->
                         bind(m.targetClass)
-                                .annotatedWith(Decorated.by(m.classes.get(i)))
-                                .to(m.classes.get(i + 1)));
+                                .annotatedWith(Decorated.by(m.decorators.get(i - 1)))
+                                .to(m.decorators.get(i)));
+
+                m.applyLink(bind(m.targetClass)
+                        .annotatedWith(Decorated.by(last(m.decorators))));
 
             }
         }.configure(binder);
+    }
+
+    private void applyLink(
+            final com.google.inject.binder.LinkedBindingBuilder b) {
+        link.apply(b);
     }
 
     private <T> AnnotatedBindingBuilder<T> newBindingBuilder() {
@@ -163,6 +193,10 @@ public class DecoratorModule implements com.google.inject.Module {
         if (scope.isPresent()) {
             scope.get().accept(b);
         }
+    }
+
+    private static Class<?> last(final List<Class> classes) {
+        return classes.get(classes.size() - 1);
     }
 }
 

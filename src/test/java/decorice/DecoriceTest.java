@@ -10,7 +10,6 @@ import com.google.inject.OutOfScopeException;
 import com.google.inject.Provider;
 import com.google.inject.Scope;
 import com.google.inject.ScopeAnnotation;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import javax.inject.Inject;
@@ -25,6 +24,7 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.sameInstance;
 
+@SuppressWarnings("unchecked")
 public class DecoriceTest {
 
     @ScopeAnnotation @Retention(RUNTIME)
@@ -116,17 +116,17 @@ public class DecoriceTest {
     }
 
     @Test
-    public void bindChainOfClasses() {
+    public void bindToClass() {
         final Injector injector = Guice.createInjector(
                 new AbstractModule() {
-                    @SuppressWarnings("unchecked")
                     @Override
                     protected void configure() {
                         install(new DecoratorModule() {{
-                            bind(Foo.class).to(
-                                    D2.class,
-                                    D1.class,
-                                    FooImpl.class);
+                            bind(Foo.class)
+                                    .to(FooImpl.class)
+                                    .decoratedBy(
+                                            D2.class,
+                                            D1.class);
                         }});
                     }
                 });
@@ -145,10 +145,10 @@ public class DecoriceTest {
                         install(new DecoratorModule() {{
                             bind(Foo.class)
                                     .annotatedWith(SomeAnnotation.class)
-                                    .to(
+                                    .to(FooImpl.class)
+                                    .decoratedBy(
                                             D2.class,
-                                            D1.class,
-                                            FooImpl.class);
+                                            D1.class);
                         }});
 
                     }
@@ -158,19 +158,27 @@ public class DecoriceTest {
                 equalTo("D2:D1:FooImpl"));
     }
 
-    @Ignore
     @Test
-    public void bindChainOfTypeLiterals() {
-    }
-
-    @Ignore
-    @Test
-    public void bindChainOfKeys() {
-    }
-
-    @Ignore
-    @Test
-    public void mixAndMatch() {
+    public void bindToKey() {
+        final Injector injector = Guice.createInjector(
+                new AbstractModule() {
+                    @Override
+                    protected void configure() {
+                        bind(Foo.class)
+                                .annotatedWith(SomeAnnotation.class)
+                                .to(FooImpl.class);
+                        install(new DecoratorModule() {{
+                            bind(Foo.class)
+                                    .to(Key.get(Foo.class, SomeAnnotation.class))
+                                    .decoratedBy(
+                                            D2.class,
+                                            D1.class);
+                        }});
+                    }
+                });
+        assertThat(
+                injector.getInstance(Foo.class).bar(),
+                equalTo("D2:D1:FooImpl"));
     }
 
     @Test
@@ -182,10 +190,10 @@ public class DecoriceTest {
                     protected void configure() {
                         install(new DecoratorModule() {{
                             bind(Foo.class)
-                                    .to(
+                                    .to(FooImpl.class)
+                                    .decoratedBy(
                                             D2.class,
-                                            D1.class,
-                                            FooImpl.class)
+                                            D1.class)
                                     .asEagerSingleton();
                         }});
                     }
@@ -209,10 +217,10 @@ public class DecoriceTest {
                     protected void configure() {
                         install(new DecoratorModule() {{
                             bind(Foo.class)
-                                    .to(
+                                    .to(FooImpl.class)
+                                    .decoratedBy(
                                             D2.class,
-                                            D1.class,
-                                            FooImpl.class)
+                                            D1.class)
                                     .in(SINGLETON);
                         }});
                     }
@@ -241,10 +249,10 @@ public class DecoriceTest {
 
                         install(new DecoratorModule() {{
                             bind(Foo.class)
-                                    .to(
+                                    .to(FooImpl.class)
+                                    .decoratedBy(
                                             D2.class,
-                                            D1.class,
-                                            FooImpl.class)
+                                            D1.class)
                                     .in(CustomScope.class);
                         }});
                     }
