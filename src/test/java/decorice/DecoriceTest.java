@@ -33,6 +33,7 @@ public class DecoriceTest {
     @BindingAnnotation @Retention(RUNTIME)
     private static @interface SomeAnnotation {}
 
+    @SuppressWarnings("UnusedDeclaration")
     private static interface Foo {
         String bar();
     }
