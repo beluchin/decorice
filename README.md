@@ -3,9 +3,7 @@ helper library to bind chain of decorators in guice
 
 You have a chain of decorators (D2 -> D1 -> D0) to bind with `Guice`. 
 
-    interface Foo {
-        String bar();
-    }
+    interface Foo { /* .... * }
 
     class D2 implements Foo {
         D2(Foo decorated /* ... */) {/* ... */}
@@ -17,7 +15,7 @@ You have a chain of decorators (D2 -> D1 -> D0) to bind with `Guice`.
         /* ... */
     }
 
-    class D0 implements Foo {/* ... */}
+    class D0 implements Foo { /* ... */ }
 
 `Guice` does not offer much syntactic sugar to help with binding such chain. (inspired by [an answer](http://stackoverflow.com/a/6197660/614800) posted on stackoverflow and [a blog] (http://www.mikevalenty.com/configuring-decorators-with-google-guice/) post) `decorice` complements `Guice` by helping you bind the chain with less boilerplate.
 
