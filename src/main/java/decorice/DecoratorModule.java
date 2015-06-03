@@ -140,13 +140,10 @@ public class DecoratorModule implements com.google.inject.Module {
     private Optional<
             Consumer<com.google.inject.binder.ScopedBindingBuilder>> scope =
             Optional.empty();
-    private static ThreadLocal<DecoratorModule> decoratorModule = new ThreadLocal<>();
 
     public <T> AnnotatedBindingBuilder<T> bind(Class<T> clazz) {
-        final DecoratorModule module = new DecoratorModule();
-        module.targetClass = clazz;
-        decoratorModule.set(module);
-        return module.newBindingBuilder();
+        targetClass = clazz;
+        return new BindingBuilder<>();
     }
 
     @Override
@@ -154,18 +151,16 @@ public class DecoratorModule implements com.google.inject.Module {
         new AbstractModule() {
             @Override
             protected void configure() {
-                final DecoratorModule m = decoratorModule.get();
+                applyScope(applyAnnotation(bind(targetClass))
+                        .to(decorators.get(0)));
 
-                m.applyScope(m.applyAnnotation(bind(m.targetClass))
-                        .to(m.decorators.get(0)));
+                IntStream.range(1, decorators.size()).forEach(i ->
+                        bind(targetClass)
+                                .annotatedWith(Decorated.by(decorators.get(i - 1)))
+                                .to(decorators.get(i)));
 
-                IntStream.range(1, m.decorators.size()).forEach(i ->
-                        bind(m.targetClass)
-                                .annotatedWith(Decorated.by(m.decorators.get(i - 1)))
-                                .to(m.decorators.get(i)));
-
-                m.applyLink(bind(m.targetClass)
-                        .annotatedWith(Decorated.by(last(m.decorators))));
+                applyLink(bind(targetClass)
+                        .annotatedWith(Decorated.by(last(decorators))));
 
             }
         }.configure(binder);
@@ -174,10 +169,6 @@ public class DecoratorModule implements com.google.inject.Module {
     private void applyLink(
             final com.google.inject.binder.LinkedBindingBuilder b) {
         link.apply(b);
-    }
-
-    private <T> AnnotatedBindingBuilder<T> newBindingBuilder() {
-        return new BindingBuilder<>();
     }
 
     private com.google.inject.binder.LinkedBindingBuilder applyAnnotation(
